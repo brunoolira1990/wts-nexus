@@ -19,7 +19,7 @@ services:
     environment:
       - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN:-nexus_segredo_2026}
     ports:
-      - "8001:8000"
+      - "8005:8000"
     depends_on:
       - db
     volumes:
