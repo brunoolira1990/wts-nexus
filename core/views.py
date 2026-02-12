@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Contato, Mensagem
+from .models import Atendimento, Cliente, Contato, Mensagem
 from .services import enviar_mensagem_whatsapp
 
 logger = logging.getLogger(__name__)
@@ -144,6 +144,61 @@ def webhook(request: HttpRequest) -> HttpResponse:
                         timestamp=ts_dt,
                         meta_message_id=message.get("id", ""),
                     )
+
+                    # --- Fila de atendimento ---
+                    cliente, _ = Cliente.objects.get_or_create(
+                        telefone=waid,
+                        defaults={"nome": contact_name},
+                    )
+                    if cliente.nome != contact_name and contact_name != waid:
+                        cliente.nome = contact_name
+                        cliente.save(update_fields=["nome"])
+
+                    aberto = (
+                        Atendimento.objects.filter(cliente=cliente)
+                        .filter(
+                            status__in=[
+                                Atendimento.Status.AGUARDANDO,
+                                Atendimento.Status.EM_ATENDIMENTO,
+                            ]
+                        )
+                        .order_by("-data_inicio")
+                        .first()
+                    )
+
+                    texto_limpo = texto.strip().lower()
+                    if aberto and aberto.status == Atendimento.Status.EM_ATENDIMENTO:
+                        continue  # Robô mudo; humano atende
+                    if texto_limpo == "oi":
+                        if not aberto:
+                            Atendimento.objects.create(
+                                cliente=cliente,
+                                departamento=Atendimento.Departamento.SEM_DEPARTAMENTO,
+                                status=Atendimento.Status.AGUARDANDO,
+                            )
+                            menu = (
+                                "Olá! Escolha o departamento:\n"
+                                "1 - Comercial\n2 - Financeiro\n3 - Técnico"
+                            )
+                            try:
+                                enviar_mensagem_whatsapp(waid, menu)
+                            except Exception as e:
+                                logger.exception("Fila: falha ao enviar menu - %s", e)
+                        continue
+                    if texto_limpo in ("1", "2", "3") and aberto and aberto.departamento == Atendimento.Departamento.SEM_DEPARTAMENTO:
+                        dept_map = {
+                            "1": (Atendimento.Departamento.COMERCIAL, "Comercial"),
+                            "2": (Atendimento.Departamento.FINANCEIRO, "Financeiro"),
+                            "3": (Atendimento.Departamento.TECNICO, "Técnico"),
+                        }
+                        dept, label = dept_map[texto_limpo]
+                        aberto.departamento = dept
+                        aberto.save(update_fields=["departamento"])
+                        msg_fila = f"Você está na fila do {label}. Aguarde um momento."
+                        try:
+                            enviar_mensagem_whatsapp(waid, msg_fila)
+                        except Exception as e:
+                            logger.exception("Fila: falha ao enviar msg fila - %s", e)
     except Exception as e:
         logger.exception("Webhook POST: erro ao processar mensagens - %s", e)
         return HttpResponse(status=200)
