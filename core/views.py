@@ -43,7 +43,7 @@ def dashboard(request: HttpRequest, contato_id: int | None = None) -> HttpRespon
 
 
 @csrf_exempt
-def whatsapp_webhook(request: HttpRequest) -> HttpResponse:
+def webhook(request: HttpRequest) -> HttpResponse:
     """
     Webhook de integração com a API do WhatsApp (Meta).
 
