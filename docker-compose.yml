@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-whats_nexus}
+      POSTGRES_USER: ${POSTGRES_USER:-whats_nexus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-whats_nexus}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+
+volumes:
+  postgres_data:
+  static_volume:
+

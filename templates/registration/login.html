@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Entrar - Whats Nexus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --nexus-blue: #0f4c81;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center px-4"
+  >
+    <div
+      class="w-full max-w-md bg-slate-950/80 border border-slate-800 rounded-2xl shadow-2xl shadow-slate-950/60 p-8"
+    >
+      <div class="flex items-center gap-3 mb-6">
+        <div
+          class="h-10 w-10 rounded-xl bg-[var(--nexus-blue)] flex items-center justify-center text-sm font-bold text-white"
+        >
+          WN
+        </div>
+        <div>
+          <p class="text-base font-semibold text-slate-50 tracking-wide">
+            Whats Nexus
+          </p>
+          <p class="text-xs text-slate-400">Central de Atendimento WhatsApp</p>
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+      <div
+        class="mb-4 rounded-md border border-red-500/60 bg-red-500/10 px-3 py-2 text-xs text-red-200"
+      >
+        {% for error in form.non_field_errors %} {{ error }} {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div class="space-y-1">
+          <label
+            for="{{ form.username.id_for_label }}"
+            class="block text-xs font-medium text-slate-300"
+          >
+            Usuário
+          </label>
+          {{ form.username|add_class:"w-full rounded-lg bg-slate-950/80 border
+          border-slate-800 px-3 py-2 text-sm text-slate-100
+          placeholder-slate-500 focus:outline-none focus:ring-2
+          focus:ring-[var(--nexus-blue)] focus:border-[var(--nexus-blue)]" }}
+          {% if form.username.errors %}
+          <p class="text-xs text-red-300 mt-1">
+            {{ form.username.errors.0 }}
+          </p>
+          {% endif %}
+        </div>
+
+        <div class="space-y-1">
+          <label
+            for="{{ form.password.id_for_label }}"
+            class="block text-xs font-medium text-slate-300"
+          >
+            Senha
+          </label>
+          {{ form.password|add_class:"w-full rounded-lg bg-slate-950/80 border
+          border-slate-800 px-3 py-2 text-sm text-slate-100
+          placeholder-slate-500 focus:outline-none focus:ring-2
+          focus:ring-[var(--nexus-blue)] focus:border-[var(--nexus-blue)]" }}
+          {% if form.password.errors %}
+          <p class="text-xs text-red-300 mt-1">
+            {{ form.password.errors.0 }}
+          </p>
+          {% endif %}
+        </div>
+
+        <button
+          type="submit"
+          class="w-full mt-4 inline-flex items-center justify-center rounded-lg bg-[var(--nexus-blue)] px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--nexus-blue)]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:ring-[var(--nexus-blue)] transition-colors"
+        >
+          Entrar
+        </button>
+      </form>
+    </div>
+  </body>
+</html>
+

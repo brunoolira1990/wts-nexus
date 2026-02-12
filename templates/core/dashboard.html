@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Whats Nexus - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --nexus-blue: #0f4c81;
+      }
+    </style>
+  </head>
+  <body class="h-screen bg-slate-900 text-slate-50">
+    <div class="flex h-full">
+      <!-- Sidebar de conversas -->
+      <aside class="w-full max-w-xs border-r border-slate-800 bg-slate-950/70">
+        <div
+          class="flex items-center justify-between px-4 py-4 border-b border-slate-800"
+        >
+          <div class="flex items-center gap-2">
+            <div
+              class="h-8 w-8 rounded-lg bg-[var(--nexus-blue)] flex items-center justify-center text-xs font-bold"
+            >
+              WN
+            </div>
+            <div>
+              <p class="text-sm font-semibold tracking-wide">Whats Nexus</p>
+              <p class="text-xs text-slate-400">Central de Atendimento</p>
+            </div>
+          </div>
+        </div>
+        <div class="px-3 py-2">
+          <input
+            type="text"
+            placeholder="Buscar contato..."
+            class="w-full rounded-lg bg-slate-900/70 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--nexus-blue)] focus:border-[var(--nexus-blue)]"
+          />
+        </div>
+        <div class="overflow-y-auto h-[calc(100%-4.5rem-3.5rem)]">
+          {% if contatos %}
+          <ul class="divide-y divide-slate-800">
+            {% for contato in contatos %}
+            {% with ativo=contato_selecionado.id|default_if_none:'' %}
+            <li>
+              <a
+                href="{% url 'core:dashboard_contato' contato.id %}"
+                class="block px-4 py-3 hover:bg-slate-900/60 cursor-pointer {% if ativo == contato.id %}bg-slate-900/80 border-l-2 border-[var(--nexus-blue)]{% endif %}"
+              >
+                <p class="text-sm font-medium">{{ contato.nome }}</p>
+                <p class="text-xs text-slate-400">{{ contato.waid }}</p>
+                {% if contato.ultima_mensagem %}
+                <p class="mt-1 text-xs text-slate-300 line-clamp-2">
+                  {{ contato.ultima_mensagem }}
+                </p>
+                {% endif %}
+              </a>
+            </li>
+            {% endwith %}
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="px-4 py-6 text-xs text-slate-500">
+            Nenhuma conversa ainda. As conversas aparecerão aqui assim que o
+            webhook estiver ativo.
+          </div>
+          {% endif %}
+        </div>
+      </aside>
+
+      <!-- Área central de chat (placeholder por enquanto) -->
+      <main class="flex-1 flex flex-col">
+        <header
+          class="h-14 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950/60"
+        >
+          {% if contato_selecionado %}
+          <div>
+            <p class="text-sm font-semibold text-slate-100">
+              {{ contato_selecionado.nome }}
+            </p>
+            <p class="text-xs text-slate-400">
+              {{ contato_selecionado.waid }}
+            </p>
+          </div>
+          {% else %}
+          <div>
+            <p class="text-sm font-semibold text-slate-100">
+              Selecione um contato
+            </p>
+            <p class="text-xs text-slate-400">
+              Assim que o webhook estiver configurado, você verá o histórico de
+              mensagens aqui.
+            </p>
+          </div>
+          {% endif %}
+        </header>
+        <section
+          class="flex-1 flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+        >
+          <div
+            id="messages-container"
+            class="flex-1 overflow-y-auto px-6 py-4 space-y-3"
+          >
+            {% if contato_selecionado and mensagens %}
+            {% for msg in mensagens %}
+            {% if msg.direcao == 'out' %}
+            <div class="flex justify-end">
+              <div
+                class="max-w-xs rounded-2xl rounded-br-sm bg-[var(--nexus-blue)] text-slate-50 px-3 py-2 text-sm shadow-md"
+              >
+                <p>{{ msg.texto }}</p>
+                <p class="mt-1 text-[10px] text-slate-100/70 text-right">
+                  {{ msg.timestamp|date:"H:i" }}
+                </p>
+              </div>
+            </div>
+            {% else %}
+            <div class="flex justify-start">
+              <div
+                class="max-w-xs rounded-2xl rounded-bl-sm bg-slate-800/80 text-slate-50 px-3 py-2 text-sm shadow-md"
+              >
+                <p>{{ msg.texto }}</p>
+                <p class="mt-1 text-[10px] text-slate-300/70 text-left">
+                  {{ msg.timestamp|date:"H:i" }}
+                </p>
+              </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% elif contato_selecionado %}
+            <div
+              class="h-full flex items-center justify-center text-xs text-slate-400"
+            >
+              Nenhuma mensagem ainda com este contato.
+            </div>
+            {% else %}
+            <div
+              class="h-full flex items-center justify-center text-xs text-slate-400"
+            >
+              Selecione um contato na coluna à esquerda para começar.
+            </div>
+            {% endif %}
+          </div>
+
+          <div
+            class="border-t border-slate-800 bg-slate-950/80 px-4 py-3 flex items-center gap-3"
+          >
+            {% if contato_selecionado %}
+            <form method="post" class="flex w-full items-center gap-3">
+              {% csrf_token %}
+              <input
+                type="text"
+                name="texto"
+                autocomplete="off"
+                placeholder="Escreva uma mensagem para {{ contato_selecionado.nome }}..."
+                class="flex-1 rounded-full bg-slate-900/80 border border-slate-700 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[var(--nexus-blue)] focus:border-[var(--nexus-blue)]"
+              />
+              <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-full bg-[var(--nexus-blue)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--nexus-blue)]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:ring-[var(--nexus-blue)] transition-colors"
+              >
+                Enviar
+              </button>
+            </form>
+            {% else %}
+            <p class="text-xs text-slate-500">
+              Selecione um contato para enviar mensagens.
+            </p>
+            {% endif %}
+          </div>
+        </section>
+      </main>
+    </div>
+    <script>
+      const container = document.getElementById("messages-container");
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
