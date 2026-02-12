@@ -17,7 +17,17 @@ SECRET_KEY = env("DJANGO_SECRET_KEY", default="insecure-secret-key-change-me")
 
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
-ALLOWED_HOSTS: list[str] = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
+ALLOWED_HOSTS: list[str] = env.list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["whatsapp.nexusvalvulas.com.br", "localhost", "127.0.0.1"],
+)
+
+# Proxy/HTTPS (atrás de reverse proxy)
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# CSRF para login e formulários via domínio de produção
+CSRF_TRUSTED_ORIGINS = ["https://whatsapp.nexusvalvulas.com.br"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
