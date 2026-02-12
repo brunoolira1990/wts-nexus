@@ -15,18 +15,16 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="insecure-secret-key-change-me")
 
-DEBUG = env.bool("DJANGO_DEBUG", default=False)
+# 1. Autorizar o domínio da Nexus
+ALLOWED_HOSTS = ["whatsapp.nexusvalvulas.com.br", "localhost", "127.0.0.1"]
 
-ALLOWED_HOSTS: list[str] = env.list(
-    "DJANGO_ALLOWED_HOSTS",
-    default=["whatsapp.nexusvalvulas.com.br", "localhost", "127.0.0.1"],
-)
-
-# Proxy/HTTPS (atrás de reverse proxy)
-USE_X_FORWARDED_HOST = True
+# 2. Configurações de Segurança para Proxy (Plesk/Nginx)
+DEBUG = False  # Importante para produção
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
-# CSRF para login e formulários via domínio de produção
+# 3. Configurações de CSRF para o Login não dar erro
 CSRF_TRUSTED_ORIGINS = ["https://whatsapp.nexusvalvulas.com.br"]
 
 INSTALLED_APPS = [
