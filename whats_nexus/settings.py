@@ -71,6 +71,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "whats_nexus.wsgi.application"
 
 
+# Dentro do Docker: host "db", porta interna 5432 (mapeamento 5433:5432 é só no host)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
