@@ -121,5 +121,6 @@ META_WA_ACCESS_TOKEN = env("META_WA_ACCESS_TOKEN", default="")
 META_WA_API_VERSION = env("META_WA_API_VERSION", default="v21.0")
 META_WA_VERIFY_TOKEN = env("META_WA_VERIFY_TOKEN", default="whats-nexus-verify-token")
 # Token usado na validação GET do webhook (Meta)
-WHATSAPP_VERIFY_TOKEN = env("WHATSAPP_VERIFY_TOKEN", default="")
+# Docker injeta via environment; fallback para django-environ (.env)
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", env("WHATSAPP_VERIFY_TOKEN", default=""))
 
