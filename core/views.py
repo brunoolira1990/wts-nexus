@@ -50,6 +50,7 @@ def webhook(request: HttpRequest) -> HttpResponse:
     - GET: verificação de token (setup no painel do Meta).
     - POST: recebimento de mensagens.
     """
+    print(request.body)
     if request.method == "GET":
         verify_token = settings.WHATSAPP_VERIFY_TOKEN
         mode = request.GET.get("hub.mode")
