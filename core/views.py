@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 
 from django.conf import settings
@@ -12,6 +13,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .models import Contato, Mensagem
 from .services import enviar_mensagem_whatsapp
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -48,9 +51,16 @@ def webhook(request: HttpRequest) -> HttpResponse:
     Webhook de integração com a API do WhatsApp (Meta).
 
     - GET: verificação de token (setup no painel do Meta).
-    - POST: recebimento de mensagens.
+    - POST: recebimento de mensagens. Sempre retorna 200 para a Meta.
     """
-    print(request.body)
+    # Log de depuração global (antes de qualquer validação)
+    logger.info(
+        "Webhook request: method=%s headers=%s body=%s",
+        request.method,
+        dict(request.headers),
+        request.body.decode("utf-8", errors="replace"),
+    )
+
     if request.method == "GET":
         verify_token = settings.WHATSAPP_VERIFY_TOKEN
         mode = request.GET.get("hub.mode")
@@ -64,72 +74,80 @@ def webhook(request: HttpRequest) -> HttpResponse:
         return HttpResponse("Parâmetros ausentes", status=403)
 
     if request.method != "POST":
-        return JsonResponse({"detail": "Method not allowed."}, status=405)
+        return HttpResponse(status=200)
 
+    # POST: sempre retornar 200 para a Meta, mesmo com erro interno
     try:
         payload = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
-        return JsonResponse({"detail": "Invalid JSON payload."}, status=400)
+    except json.JSONDecodeError as e:
+        logger.exception("Webhook POST: JSON inválido - %s", e)
+        return HttpResponse(status=200)
 
-    entries = payload.get("entry", [])
-    for entry in entries:
-        changes = entry.get("changes", [])
-        for change in changes:
-            value = change.get("value", {})
-            messages = value.get("messages", [])
-            contacts = value.get("contacts", [])
+    try:
+        entries = payload.get("entry", [])
+        for entry in entries:
+            changes = entry.get("changes", [])
+            for change in changes:
+                value = change.get("value", {})
+                messages = value.get("messages", [])
+                contacts = value.get("contacts", [])
 
-            for idx, message in enumerate(messages):
-                waid = message.get("from")
-                if not waid:
-                    continue
+                for idx, message in enumerate(messages):
+                    # Aceita qualquer waid (produção ou teste), ex: 982237891640106
+                    waid = message.get("from")
+                    if not waid:
+                        continue
+                    waid = str(waid).strip()
 
-                contact_name = waid
-                if idx < len(contacts):
-                    profile = contacts[idx].get("profile") or {}
-                    contact_name = profile.get("name") or waid
+                    contact_name = waid
+                    if idx < len(contacts):
+                        profile = contacts[idx].get("profile") or {}
+                        contact_name = profile.get("name") or waid
 
-                msg_type = message.get("type")
-                texto = ""
-                if msg_type == "text":
-                    texto = (message.get("text") or {}).get("body", "")
-                # Aqui podemos expandir para outros tipos (image, audio, etc) se necessário
+                    msg_type = message.get("type")
+                    texto = ""
+                    if msg_type == "text":
+                        texto = (message.get("text") or {}).get("body", "")
+                    # Outros tipos (image, audio, etc.) podem ser expandidos depois
 
-                if not texto:
-                    continue
+                    if not texto:
+                        continue
 
-                ts_raw = message.get("timestamp")
-                if ts_raw:
-                    try:
-                        ts_dt = datetime.fromtimestamp(
-                            int(ts_raw),
-                            tz=timezone.utc,
-                        )
-                    except (TypeError, ValueError):
+                    ts_raw = message.get("timestamp")
+                    if ts_raw:
+                        try:
+                            ts_dt = datetime.fromtimestamp(
+                                int(ts_raw),
+                                tz=timezone.utc,
+                            )
+                        except (TypeError, ValueError):
+                            ts_dt = timezone.now()
+                    else:
                         ts_dt = timezone.now()
-                else:
-                    ts_dt = timezone.now()
 
-                contato, created = Contato.objects.get_or_create(
-                    waid=waid,
-                    defaults={
-                        "nome": contact_name,
-                        "ultima_mensagem": texto,
-                    },
-                )
-                if not created:
-                    contato.ultima_mensagem = texto
-                    contato.save(update_fields=["ultima_mensagem", "atualizado_em"])
+                    contato, created = Contato.objects.get_or_create(
+                        waid=waid,
+                        defaults={
+                            "nome": contact_name,
+                            "ultima_mensagem": texto,
+                        },
+                    )
+                    if not created:
+                        contato.ultima_mensagem = texto
+                        contato.save(update_fields=["ultima_mensagem", "atualizado_em"])
 
-                Mensagem.objects.create(
-                    contato=contato,
-                    texto=texto,
-                    direcao=Mensagem.Direcao.ENTRADA,
-                    status=Mensagem.Status.ENTREGUE,
-                    timestamp=ts_dt,
-                    meta_message_id=message.get("id", ""),
-                )
+                    Mensagem.objects.create(
+                        contato=contato,
+                        texto=texto,
+                        direcao=Mensagem.Direcao.ENTRADA,
+                        status=Mensagem.Status.ENTREGUE,
+                        timestamp=ts_dt,
+                        meta_message_id=message.get("id", ""),
+                    )
+    except Exception as e:
+        logger.exception("Webhook POST: erro ao processar mensagens - %s", e)
+        return HttpResponse(status=200)
 
-    return JsonResponse({"status": "ok"})
+    return HttpResponse(status=200)
 
 
