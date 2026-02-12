@@ -5,12 +5,7 @@ from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import (
-    HttpRequest,
-    HttpResponse,
-    HttpResponseForbidden,
-    JsonResponse,
-)
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -56,14 +51,16 @@ def whatsapp_webhook(request: HttpRequest) -> HttpResponse:
     - POST: recebimento de mensagens.
     """
     if request.method == "GET":
+        verify_token = settings.WHATSAPP_VERIFY_TOKEN
         mode = request.GET.get("hub.mode")
         token = request.GET.get("hub.verify_token")
         challenge = request.GET.get("hub.challenge")
 
-        if mode == "subscribe" and token == settings.META_WA_VERIFY_TOKEN:
-            return HttpResponse(challenge or "")
-
-        return HttpResponseForbidden("Invalid verification token.")
+        if mode and token:
+            if mode == "subscribe" and token == verify_token:
+                return HttpResponse(challenge or "")
+            return HttpResponse("Token inválido", status=403)
+        return HttpResponse("Parâmetros ausentes", status=403)
 
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed."}, status=405)
